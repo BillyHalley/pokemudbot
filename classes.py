@@ -8,4 +8,3 @@ class Room:
         self.w = w
         self.u = u
         self.d = d
-        self.players_list = {}
