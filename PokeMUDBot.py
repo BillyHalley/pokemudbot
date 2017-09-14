@@ -6,9 +6,8 @@ from os.path import join
 from os.path import exists
 from datetime import datetime
 from kanto import kanto
-from sys import argv
 
-TOKEN = argv[1]
+TOKEN = open('.token', 'r')
 bot = telepot.Bot(TOKEN)
 
 
