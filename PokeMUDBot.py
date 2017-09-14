@@ -60,6 +60,7 @@ def p_register(p_shelve, name, chat_id):
 def handle(msg):
     content_type, chat_type, chat_id = telepot.glance(msg)
     print(content_type, chat_type, chat_id)
+    p_path = join("players", "p_" + str(chat_id))
 
     def print_room(location):
         room = kanto[location['room']]
@@ -91,7 +92,7 @@ def handle(msg):
         pprint(dict(l_shelve))
         l_shelve.close()
         p_shelve.close()
-        remove(join("players", "p_" + str(chat_id)))
+        remove(p_path)
 
     def users_list(region, room):
         l_shelve = shelve.open('locations')
@@ -100,8 +101,6 @@ def handle(msg):
         if chat_id in room.keys():
             del room[chat_id]
         return room
-
-    p_path = join("players", "p_" + str(chat_id))
 
     if content_type == 'text':
         txt = msg['text']
