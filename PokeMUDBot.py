@@ -4,6 +4,7 @@ import time
 import shelve
 from os.path import join
 from os.path import exists
+from os import remove
 from datetime import datetime
 from kanto import kanto
 from pprint import pprint
@@ -56,34 +57,13 @@ def p_register(p_shelve, name, chat_id):
     # friends
 
 
-def users_list(region, room, chat_id):
-    l_shelve = shelve.open('locations')
-    room = dict(l_shelve[region][room])
-    pprint(dict(l_shelve))
-    if chat_id in room.keys():
-        del room[chat_id]
-    return room
-
-
-def move_user(old_region, new_region, old_room, new_room, chat_id, name):
-    l_shelve = shelve.open('locations', writeback=True)
-    region_dic = l_shelve[old_region]
-    room_dic = region_dic[old_room]
-    if chat_id in room_dic.keys():
-        del room_dic[chat_id]
-    region_dic = l_shelve[new_region]
-    room_dic = region_dic[new_room]
-    room_dic[chat_id] = name
-    l_shelve.close()
-
-
 def handle(msg):
     content_type, chat_type, chat_id = telepot.glance(msg)
     print(content_type, chat_type, chat_id)
 
     def print_room(location):
         room = kanto[location['room']]
-        u_list = users_list(location['region'], location['room'], chat_id)
+        u_list = users_list(location['region'], location['room'])
         u_str = ''
         for user in u_list.values():
             if u_str == '':
@@ -102,6 +82,25 @@ def handle(msg):
         bot.sendMessage(
             chat_id, room.shortdescription + "\n" + room.description + str)
 
+    def p_delete():
+        p_shelve = shelve.open(join("players", "p_" + str(chat_id)))
+        location = p_shelve['location']
+        l_shelve = shelve.open('locations', writeback=True)
+        room = l_shelve[location['region']][location['room']]
+        del room[chat_id]
+        pprint(dict(l_shelve))
+        l_shelve.close()
+        p_shelve.close()
+        remove(join("players", "p_" + str(chat_id)))
+
+    def users_list(region, room):
+        l_shelve = shelve.open('locations')
+        room = dict(l_shelve[region][room])
+        pprint(dict(l_shelve))
+        if chat_id in room.keys():
+            del room[chat_id]
+        return room
+
     p_path = join("players", "p_" + str(chat_id))
 
     if content_type == 'text':
@@ -116,98 +115,65 @@ def handle(msg):
                     p_register(p_shelve, txt[10:], chat_id)
         else:
             p_shelve = shelve.open(p_path)
+            name = p_shelve['info']['name']
             location = p_shelve['location']
+
+            def move_user(new_region, new_room):
+                l_shelve = shelve.open('locations', writeback=True)
+                old_region = location['region']
+                old_room = location['room']
+                region_dic = l_shelve[old_region]
+                room_dic = region_dic[old_room]
+                if chat_id in room_dic.keys():
+                    del room_dic[chat_id]
+                region_dic = l_shelve[new_region]
+                room_dic = region_dic[new_room]
+                room_dic[chat_id] = name
+                p_shelve['location'] = {'region': new_region, 'room': new_room}
+                l_shelve.close()
+                print_room(p_shelve['location'])
+
             room = kanto[location['room']]
             if '/player' in txt:
                 bot.sendMessage(
-                    chat_id, "Name: " + p_shelve['info']['name'])
+                    chat_id, "Name: " + p_shelve['info']['name'] + "\nLocation: " + location['region'] + " " + location['room'])
             elif '/location' in txt:
                 print_room(location)
             elif txt == '/north':
                 if room.n is not None:
-                    move_user(location['region'], 'kanto', location['room'],
-                              room.n, chat_id, p_shelve['info']['name'])
-                    location['room'] = room.n
-                    print_room(location)
+                    move_user('kanto', room.n)
                 else:
                     bot.sendMessage(chat_id, "Sorry, you can't go that way")
             elif txt == '/south':
                 if room.s is not None:
-                    move_user(location['region'], 'kanto', location['room'],
-                              room.s, chat_id, p_shelve['info']['name'])
-                    location['room'] = room.s
-                    print_room(location)
+                    move_user('kanto', room.s)
                 else:
                     bot.sendMessage(chat_id, "Sorry, you can't go that way")
             elif txt == '/east':
                 if room.e is not None:
-                    move_user(location['region'], 'kanto', location['room'],
-                              room.e, chat_id, p_shelve['info']['name'])
-                    location['room'] = room.e
-                    print_room(location)
+                    move_user('kanto', room.e)
                 else:
                     bot.sendMessage(chat_id, "Sorry, you can't go that way")
             elif txt == '/west':
                 if room.w is not None:
-                    move_user(location['region'], 'kanto', location['room'],
-                              room.w, chat_id, p_shelve['info']['name'])
-                    location['room'] = room.w
-                    print_room(location)
+                    move_user('kanto', room.w)
                 else:
                     bot.sendMessage(chat_id, "Sorry, you can't go that way")
             elif txt == '/up':
                 if room.u is not None:
-                    move_user(location['region'], 'kanto', location['room'],
-                              room.u, chat_id, p_shelve['info']['name'])
-                    location['room'] = room.u
-                    print_room(location)
+                    move_user('kanto', room.u)
                 else:
                     bot.sendMessage(chat_id, "Sorry, you can't go that way")
             elif txt == '/down':
                 if room.d is not None:
-                    move_user(location['region'], 'kanto', location['room'],
-                              room.d, chat_id, p_shelve['info']['name'])
-                    location['room'] = room.d
-                    print_room(location)
+                    move_user('kanto', room.d)
                 else:
                     bot.sendMessage(chat_id, "Sorry, you can't go that way")
+            elif '/delete' in txt:
+                if txt[8:] == p_shelve['info']['name']:
+                    p_delete(chat_id)
 
-            p_shelve['location'] = location
             p_shelve.close()
-
-    # if content_type == 'text':
-    #     txt = msg['text']
-
-    #     s = shelve.open("players/" + str(chat_id))
-
-    #     if "/name" in txt:
-    #         s['name'] = txt.split(" ")[1]
-    #         bot.sendMessage(chat_id, "So, your name is " + s['name'])
-    #         bot.sendMessage(
-    #             chat_id, "Are you a boy or a girl?\nUse /male or /female")
-    #     if "/male" in txt:
-    #         bot.sendMessage(chat_id, "So, you're a boy!")
-    #         s['gender'] = 'Male'
-    #         bot.sendMessage(
-    #             chat_id, "Select your starter\nUse /starter PokemonName")
-    #     if "/female" in txt:
-    #         bot.sendMessage(chat_id, "So, you're a girl!")
-    #         s['gender'] = 'Female'
-    #         bot.sendMessage(
-    #             chat_id, "Select your starter\nUse /starter PokemonName")
-    #     if "/starter" in txt:
-    #         name = txt.split(" ")[1]
-    #         bot.sendPhoto(chat_id, 'https://img.pokemondb.net/artwork/' +
-    #                       name.lower() + '.jpg', "So, you chose " + name + "!")
-    #         s['pokemon'] = name
-    #         bot.sendMessage(
-    #             chat_id, "Your character is complete, use /player to list your informations")
-
-    #     if "/player" in txt:
-    #         bot.sendMessage(chat_id, "Your name is: " +
-    #                         s['name'] + "\nYou are a: " + s['gender'] + "\nYou chose: " + s['pokemon'])
-
-    #     s.close()
 
 
 MessageLoop(bot, handle).run_as_thread()
