@@ -7,7 +7,8 @@ from os.path import exists
 from datetime import datetime
 from kanto import kanto
 
-TOKEN = open('.token', 'r')
+token_file = open('.token', 'r')
+TOKEN = token_file.read()
 bot = telepot.Bot(TOKEN)
 
 
